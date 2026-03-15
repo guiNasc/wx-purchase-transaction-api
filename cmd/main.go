@@ -39,6 +39,7 @@ func main() {
 	router.GET("/health", purchaseTransactionController.HealthHandler)
 	router.GET("/transactions", purchaseTransactionController.GetTransactions)
 	router.POST("/transactions", purchaseTransactionController.CreateTransaction)
+	router.GET("/transactions/:id", purchaseTransactionController.GetTransactionById)
 
 	server := &http.Server{
 		Addr:         ":" + port,

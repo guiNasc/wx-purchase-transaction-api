@@ -61,3 +61,26 @@ func (pr *PurchaseTransactionRepository) Save(transaction model.PurchaseTransact
 
 	return nil
 }
+
+func (pr *PurchaseTransactionRepository) GetById(id int) (model.PurchaseTransaction, error) {
+
+	qs := "SELECT id, description, amount, reference_date FROM purchase_transactions WHERE id = $1"
+	row := pr.connection.QueryRow(qs, id)
+
+	var transactionObj model.PurchaseTransaction
+
+	err := row.Scan(
+		&transactionObj.ID,
+		&transactionObj.Description,
+		&transactionObj.Amount,
+		&transactionObj.TransactionDate,
+	)
+
+	if err != nil {
+		fmt.Println(err)
+		return model.PurchaseTransaction{}, err
+	}
+
+	return transactionObj, nil
+
+}

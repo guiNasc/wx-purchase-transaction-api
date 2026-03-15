@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"strconv"
 	"time"
 	"wx-purchase-api/model"
 	"wx-purchase-api/usecase"
@@ -36,6 +37,30 @@ func (rc *purchaseTransactionController) GetTransactions(c *gin.Context) {
 	}
 
 	c.JSON(http.StatusOK, transactions)
+}
+
+func (rc *purchaseTransactionController) GetTransactionById(c *gin.Context) {
+
+	idParam := c.Param("id")
+	if idParam == "" {
+		writeError(c, http.StatusBadRequest, "ID parameter is required")
+		return
+	}
+
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		writeError(c, http.StatusBadRequest, "Invalid ID parameter")
+		return
+	}
+
+	transaction, err := rc.purchaseTransactionUsecase.GetTransactionById(id)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "Failed to retrieve transaction")
+
+		return
+	}
+
+	c.JSON(http.StatusOK, transaction)
 }
 
 func (rc *purchaseTransactionController) CreateTransaction(c *gin.Context) {
