@@ -89,6 +89,36 @@ func (rc *purchaseTransactionController) CreateTransaction(c *gin.Context) {
 	c.JSON(http.StatusCreated, gin.H{"message": "Transaction created successfully"})
 }
 
+func (rc *purchaseTransactionController) GetTransactionExchange(c *gin.Context) {
+
+	idParam := c.Param("id")
+	if idParam == "" {
+		writeError(c, http.StatusBadRequest, "ID parameter is required")
+		return
+	}
+
+	id, err := strconv.Atoi(idParam)
+	if err != nil {
+		writeError(c, http.StatusBadRequest, "Invalid ID parameter")
+		return
+	}
+
+	cParam := c.Param("currency")
+	if cParam == "" {
+		writeError(c, http.StatusBadRequest, "currency parameter is required")
+		return
+	}
+
+	pte, err := rc.purchaseTransactionUsecase.GetTransactionExchange(c.Request.Context(), id, cParam)
+	if err != nil {
+		writeError(c, http.StatusInternalServerError, "Failed to retrieve transaction")
+
+		return
+	}
+
+	c.JSON(http.StatusOK, pte)
+}
+
 func writeError(c *gin.Context, status int, message string) {
 	c.JSON(status, gin.H{"error": message})
 }

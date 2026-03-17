@@ -10,8 +10,8 @@ type PurchaseTransactionRepository struct {
 	connection *sql.DB
 }
 
-func NewPurchaseTransactionRepository(connection *sql.DB) PurchaseTransactionRepository {
-	return PurchaseTransactionRepository{
+func NewPurchaseTransactionRepository(connection *sql.DB) *PurchaseTransactionRepository {
+	return &PurchaseTransactionRepository{
 		connection,
 	}
 }

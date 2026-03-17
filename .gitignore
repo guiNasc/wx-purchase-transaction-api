@@ -14,6 +14,7 @@
 *.cover
 coverage.out
 cover.out
+.todo
 
 # Go workspace binaries
 bin/

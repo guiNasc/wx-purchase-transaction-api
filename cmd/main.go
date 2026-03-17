@@ -7,6 +7,7 @@ import (
 	"time"
 	"wx-purchase-api/controller"
 	"wx-purchase-api/database"
+	"wx-purchase-api/infra"
 	"wx-purchase-api/repository"
 	"wx-purchase-api/usecase"
 
@@ -24,6 +25,10 @@ func main() {
 		port = defaultPort
 	}
 
+	//TODO: add graceful shutdown with context and signal handling
+	//ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	//defer cancel()
+
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 
@@ -33,13 +38,16 @@ func main() {
 	}
 
 	purchaseTransactionRepository := repository.NewPurchaseTransactionRepository(dbConnection)
-	purchaseTransactionUsecase := usecase.NewPurchaseTransactionUseCase(purchaseTransactionRepository)
+
+	gateway := infra.NewGateway()
+	purchaseTransactionUsecase := usecase.NewPurchaseTransactionUseCase(purchaseTransactionRepository, gateway)
 	purchaseTransactionController := controller.NewPurchaseTransactionController(purchaseTransactionUsecase)
 
 	router.GET("/health", purchaseTransactionController.HealthHandler)
 	router.GET("/transactions", purchaseTransactionController.GetTransactions)
 	router.POST("/transactions", purchaseTransactionController.CreateTransaction)
 	router.GET("/transactions/:id", purchaseTransactionController.GetTransactionById)
+	router.GET("/transactions/:id/exchange/:currency", purchaseTransactionController.GetTransactionExchange)
 
 	server := &http.Server{
 		Addr:         ":" + port,

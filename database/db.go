@@ -14,7 +14,7 @@ func ConnectDB() (*sql.DB, error) {
 	port := getEnvAsInt("DB_PORT", 5432)
 	user := getEnv("DB_USER", "postgres")
 	password := getEnv("DB_PASSWORD", "postgres")
-	dbname := getEnv("DB_NAME", "wx_purchase_db")
+	dbname := getEnv("DB_NAME", "wx_purchase_transactions")
 	sslmode := getEnv("DB_SSLMODE", "disable")
 
 	psqlInfo := fmt.Sprintf("host=%s port=%d user=%s password=%s dbname=%s sslmode=%s",

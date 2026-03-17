@@ -30,7 +30,7 @@ func TestValidateTransactionDescriptionLength(t *testing.T) {
 			err := validateTransaction(model.PurchaseTransaction{
 				Description:     tt.description,
 				Amount:          10.0,
-				TransactionDate: "12/01/2019",
+				TransactionDate: "2019-12-01",
 			})
 			if (err != nil) != tt.wantErr {
 				t.Fatalf("expected error: %v, got err: %v", tt.wantErr, err)
@@ -79,7 +79,7 @@ func TestValidateTransactionAmountMustBePositive(t *testing.T) {
 			err := validateTransaction(model.PurchaseTransaction{
 				Description:     "valid description",
 				Amount:          tt.amount,
-				TransactionDate: "12/01/2019",
+				TransactionDate: "2019-12-01",
 			})
 
 			if (err != nil) != tt.wantErr {
@@ -96,18 +96,18 @@ func TestValidateTransactionDateMustBeUSFormat(t *testing.T) {
 		wantErr         bool
 	}{
 		{
-			name:            "accepts valid us date",
-			transactionDate: "12/01/2019",
+			name:            "accepts valid date",
+			transactionDate: "2019-12-01",
 			wantErr:         false,
 		},
 		{
-			name:            "rejects non us date format",
-			transactionDate: "2019-12-01",
+			name:            "rejects non YYYY-MM-DD date format",
+			transactionDate: "12/01/2019",
 			wantErr:         true,
 		},
 		{
 			name:            "rejects invalid date",
-			transactionDate: "13/40/2019",
+			transactionDate: "2019-13-40",
 			wantErr:         true,
 		},
 	}
