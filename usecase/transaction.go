@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"time"
 	"wx-purchase-api/model"
+
+	"github.com/shopspring/decimal"
 )
 
 const maxDescriptionLength = 50
@@ -16,7 +18,7 @@ type IPurchaseRepository interface {
 }
 
 type IRequestGateway interface {
-	GetExchangeRate(ctx context.Context, endpoint string, currency string) (model.ExchangeAPIResponse, error)
+	GetExchangeRate(ctx context.Context, currency, fromDate, toDate string) (model.ExchangeAPIResponse, error)
 }
 
 type PurchaseTransactionUsecase struct {
@@ -69,30 +71,41 @@ func (ptu *PurchaseTransactionUsecase) GetTransactionExchange(ctx context.Contex
 		return model.PurchaseTransactionExchange{}, err
 	}
 
-	purchaseDate, err := time.Parse(time.RFC3339, p.TransactionDate)
+	toDate, err := time.Parse(time.RFC3339, p.TransactionDate)
 	if err != nil {
 		return model.PurchaseTransactionExchange{}, fmt.Errorf("invalid transaction date format: %w", err)
 	}
 
-	sixMonthsAgo := purchaseDate.AddDate(0, -6, 0).Format("2006-01-02")
+	fromDate := toDate.AddDate(0, -6, 0).Format("2006-01-02")
+	toDateStr := toDate.Format("2006-01-02")
 
-	baseUrl := "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/"
-	endpoint := fmt.Sprintf("%sv1/accounting/od/rates_of_exchange", baseUrl)
-	url := fmt.Sprintf("%s?fields=record_date,country,currency,country_currency_desc,exchange_rate", endpoint)
-	url += fmt.Sprintf("&filter=currency:in:(%s),record_date:gte:%s,record_date:lte:%s&sort=-record_date", currency, sixMonthsAgo,
-		purchaseDate.Format("2006-01-02"),
-	)
-
-	fmt.Println(url)
-
-	apiResponse, err := ptu.requestGateway.GetExchangeRate(ctx, url, currency)
+	apiResponse, err := ptu.requestGateway.GetExchangeRate(ctx, currency, fromDate, toDateStr)
 	if err != nil {
 		return model.PurchaseTransactionExchange{}, err
 	}
 
-	for _, exchangeData := range apiResponse.Data {
-		fmt.Println(exchangeData)
+	if apiResponse.Meta.Count == 0 {
+		return model.PurchaseTransactionExchange{}, fmt.Errorf("no exchange rate data found for currency %s in the last 6 months", currency)
 	}
 
-	return model.PurchaseTransactionExchange{}, nil
+	apiObj := apiResponse.Data[0]
+
+	eRate, err := decimal.NewFromString(apiObj.ExchangeRate)
+	if err != nil {
+		return model.PurchaseTransactionExchange{}, fmt.Errorf("invalid exchange rate format: %w", err)
+	}
+
+	decimalAmount := decimal.NewFromFloat(p.Amount)
+
+	convertedAmount := decimalAmount.Mul(eRate).Round(2)
+
+	return model.PurchaseTransactionExchange{
+		Description:     p.Description,
+		TransactionDate: p.TransactionDate,
+		Amount:          p.Amount,
+		ID:              p.ID,
+		Currency:        apiObj.Currency,
+		ExchangeRate:    eRate.InexactFloat64(),
+		ConvertedAmount: convertedAmount.InexactFloat64(),
+	}, nil
 }

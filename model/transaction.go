@@ -27,7 +27,12 @@ type ExchangeAPIObj struct {
 }
 
 type ExchangeAPIResponse struct {
-	Data []ExchangeAPIObj `json:"data"`
+	Meta ExchangeAPIResponseMeta `json:"meta"`
+	Data []ExchangeAPIObj        `json:"data"`
+}
+
+type ExchangeAPIResponseMeta struct {
+	Count int `json:"count"`
 }
 
 type HealthResponse struct {

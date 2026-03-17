@@ -15,12 +15,23 @@ type Gateway struct {
 
 func NewGateway() *Gateway {
 	return &Gateway{
-		client: &http.Client{Timeout: 10 * time.Second},
+		client: &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
-func (g *Gateway) GetExchangeRate(ctx context.Context, endpoint string, currency string) (model.ExchangeAPIResponse, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+func (g *Gateway) GetExchangeRate(ctx context.Context, currency, fromDate, toDate string) (model.ExchangeAPIResponse, error) {
+
+	baseUrl := "https://api.fiscaldata.treasury.gov/services/api/fiscal_service/"
+	endpoint := fmt.Sprintf("%sv1/accounting/od/rates_of_exchange", baseUrl)
+	url := fmt.Sprintf("%s?fields=record_date,country,currency,country_currency_desc,exchange_rate", endpoint)
+	url += fmt.Sprintf("&filter=currency:eq:%s,record_date:gte:%s,record_date:lte:%s&sort=-record_date", currency, fromDate,
+		toDate,
+	)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("User-Agent", "wx-purchase-api/1.0")
+
 	var payload model.ExchangeAPIResponse
 
 	if err != nil {
@@ -37,16 +48,9 @@ func (g *Gateway) GetExchangeRate(ctx context.Context, endpoint string, currency
 		return payload, fmt.Errorf("exchange endpoint returned status %d", resp.StatusCode)
 	}
 
-	fmt.Println("Received response from exchange API")
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 		return payload, fmt.Errorf("failed to decode exchange response: %w", err)
 	}
-
-	//TODO remove this later, just to check the response from the API
-	// rate, ok := payload.Data[currency]
-	// if !ok {
-	// 	return pte, fmt.Errorf("currency %s not found in response", currency)
-	// }
 
 	return payload, nil
 }
