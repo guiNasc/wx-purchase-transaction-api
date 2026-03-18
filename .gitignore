@@ -13,6 +13,7 @@
 *.out
 *.cover
 coverage.out
+coverage.html
 cover.out
 .todo
 

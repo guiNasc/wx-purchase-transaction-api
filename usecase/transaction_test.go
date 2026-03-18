@@ -1,11 +1,45 @@
 package usecase
 
 import (
+	"context"
+	"errors"
 	"strings"
 	"testing"
 
 	"wx-purchase-api/model"
 )
+
+type purchaseRepositoryMock struct {
+	getByIdFn func(id int) (model.PurchaseTransaction, error)
+}
+
+func (m *purchaseRepositoryMock) Get() ([]model.PurchaseTransaction, error) {
+	return nil, nil
+}
+
+func (m *purchaseRepositoryMock) Save(transaction model.PurchaseTransaction) error {
+	return nil
+}
+
+func (m *purchaseRepositoryMock) GetById(id int) (model.PurchaseTransaction, error) {
+	if m.getByIdFn == nil {
+		return model.PurchaseTransaction{}, nil
+	}
+
+	return m.getByIdFn(id)
+}
+
+type requestGatewayMock struct {
+	getExchangeRateFn func(ctx context.Context, currency, fromDate, toDate string) (model.ExchangeAPIResponse, error)
+}
+
+func (m *requestGatewayMock) GetExchangeRate(ctx context.Context, currency, fromDate, toDate string) (model.ExchangeAPIResponse, error) {
+	if m.getExchangeRateFn == nil {
+		return model.ExchangeAPIResponse{}, nil
+	}
+
+	return m.getExchangeRateFn(ctx, currency, fromDate, toDate)
+}
 
 func TestValidateTransactionDescriptionLength(t *testing.T) {
 	tests := []struct {
@@ -89,7 +123,7 @@ func TestValidateTransactionAmountMustBePositive(t *testing.T) {
 	}
 }
 
-func TestValidateTransactionDateMustBeUSFormat(t *testing.T) {
+func TestValidateTransactionDateMustBeFormatted(t *testing.T) {
 	tests := []struct {
 		name            string
 		transactionDate string
@@ -124,5 +158,184 @@ func TestValidateTransactionDateMustBeUSFormat(t *testing.T) {
 				t.Fatalf("expected error: %v, got err: %v", tt.wantErr, err)
 			}
 		})
+	}
+}
+
+func TestGetTransactionExchangeReturnsRepositoryError(t *testing.T) {
+	repoErr := errors.New("repository failure")
+
+	uc := &PurchaseTransactionUsecase{
+		purchaseTransactionRepository: &purchaseRepositoryMock{
+			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+				return model.PurchaseTransaction{}, repoErr
+			},
+		},
+		requestGateway: &requestGatewayMock{},
+	}
+
+	_, err := uc.GetTransactionExchange(context.Background(), 1, "Brazil-Real")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !strings.Contains(err.Error(), repoErr.Error()) {
+		t.Fatalf("expected error to contain %q, got %q", repoErr.Error(), err.Error())
+	}
+}
+
+func TestGetTransactionExchangeReturnsErrorWhenDateIsInvalid(t *testing.T) {
+	uc := &PurchaseTransactionUsecase{
+		purchaseTransactionRepository: &purchaseRepositoryMock{
+			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+				return model.PurchaseTransaction{
+					ID:              "1",
+					Description:     "test",
+					Amount:          10,
+					TransactionDate: "12/01/2019",
+				}, nil
+			},
+		},
+		requestGateway: &requestGatewayMock{},
+	}
+
+	_, err := uc.GetTransactionExchange(context.Background(), 1, "Brazil-Real")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !strings.Contains(err.Error(), "invalid transaction date format") {
+		t.Fatalf("expected invalid date error, got %q", err.Error())
+	}
+}
+
+func TestGetTransactionExchangeReturnsGatewayError(t *testing.T) {
+	gatewayErr := errors.New("gateway failure")
+
+	uc := &PurchaseTransactionUsecase{
+		purchaseTransactionRepository: &purchaseRepositoryMock{
+			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+				return model.PurchaseTransaction{
+					ID:              "1",
+					Description:     "test",
+					Amount:          10,
+					TransactionDate: "2019-07-25T00:00:00Z",
+				}, nil
+			},
+		},
+		requestGateway: &requestGatewayMock{
+			getExchangeRateFn: func(ctx context.Context, currency, fromDate, toDate string) (model.ExchangeAPIResponse, error) {
+				return model.ExchangeAPIResponse{}, gatewayErr
+			},
+		},
+	}
+
+	_, err := uc.GetTransactionExchange(context.Background(), 1, "Brazil-Real")
+	if err == nil {
+		t.Fatal("expected error, got nil")
+	}
+
+	if !strings.Contains(err.Error(), gatewayErr.Error()) {
+		t.Fatalf("expected error to contain %q, got %q", gatewayErr.Error(), err.Error())
+	}
+}
+
+func TestGetTransactionExchangeCallsGatewayWithExpectedParams(t *testing.T) {
+	called := false
+
+	uc := &PurchaseTransactionUsecase{
+		purchaseTransactionRepository: &purchaseRepositoryMock{
+			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+				return model.PurchaseTransaction{
+					ID:              "1",
+					Description:     "test",
+					Amount:          10,
+					TransactionDate: "2019-07-25T00:00:00Z",
+				}, nil
+			},
+		},
+		requestGateway: &requestGatewayMock{
+			getExchangeRateFn: func(ctx context.Context, currency, fromDate, toDate string) (model.ExchangeAPIResponse, error) {
+				called = true
+
+				if currency != "Brazil-Real" {
+					t.Fatalf("expected currency Brazil-Real, got %s", currency)
+				}
+
+				if fromDate != "2019-01-25" {
+					t.Fatalf("expected from date 2019-01-25, got %s", fromDate)
+				}
+
+				if toDate != "2019-07-25" {
+					t.Fatalf("expected to date 2019-07-25, got %s", toDate)
+				}
+
+				reponse := model.ExchangeAPIResponse{
+					Meta: model.ExchangeAPIResponseMeta{
+						Count: 1,
+					},
+					Data: []model.ExchangeAPIObj{
+						{
+							Currency:     "Real",
+							ExchangeRate: "5.34",
+						},
+					},
+				}
+
+				return reponse, nil
+			},
+		},
+	}
+
+	_, err := uc.GetTransactionExchange(context.Background(), 1, "Brazil-Real")
+	if err != nil {
+		t.Fatalf("expected nil error, got %v", err)
+	}
+
+	if !called {
+		t.Fatal("expected gateway to be called")
+	}
+}
+
+func TestGetTransactionExchangeNoConversionAvailable(t *testing.T) {
+	called := false
+	wantErr := errors.New("no exchange rate data found for currency Brazil-Real in the last 6 months")
+
+	uc := &PurchaseTransactionUsecase{
+		purchaseTransactionRepository: &purchaseRepositoryMock{
+			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+				return model.PurchaseTransaction{
+					ID:              "1",
+					Description:     "test",
+					Amount:          10,
+					TransactionDate: "2019-07-25T00:00:00Z",
+				}, nil
+			},
+		},
+		requestGateway: &requestGatewayMock{
+			getExchangeRateFn: func(ctx context.Context, currency, fromDate, toDate string) (model.ExchangeAPIResponse, error) {
+				called = true
+
+				reponse := model.ExchangeAPIResponse{
+					Meta: model.ExchangeAPIResponseMeta{
+						Count: 0,
+					},
+				}
+
+				return reponse, nil
+			},
+		},
+	}
+
+	_, err := uc.GetTransactionExchange(context.Background(), 1, "Brazil-Real")
+	if err == nil {
+		t.Fatalf("expected error, got nil")
+	}
+
+	if !strings.Contains(wantErr.Error(), err.Error()) {
+		t.Fatalf("expected error to contain %q, got %q", err.Error(), err.Error())
+	}
+
+	if !called {
+		t.Fatal("expected gateway to be called")
 	}
 }
