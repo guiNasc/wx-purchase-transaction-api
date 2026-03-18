@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"log/slog"
 	"os"
 	"strconv"
 
@@ -30,7 +31,7 @@ func ConnectDB() (*sql.DB, error) {
 		return nil, err
 	}
 
-	fmt.Println("Connected to db: " + dbname)
+	slog.Info("database connected", "db_name", dbname, "host", host, "port", port)
 
 	return db, nil
 }

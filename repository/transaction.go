@@ -3,7 +3,7 @@ package repository
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"log/slog"
 	"wx-purchase-api/model"
 )
 
@@ -22,9 +22,10 @@ func (pr *PurchaseTransactionRepository) Get(ctx context.Context) ([]model.Purch
 	qs := "SELECT id, description, amount, reference_date FROM purchase_transactions ORDER BY reference_date DESC	"
 	rows, err := pr.connection.QueryContext(ctx, qs)
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("failed to query transactions", "error", err)
 		return []model.PurchaseTransaction{}, err
 	}
+	defer rows.Close()
 
 	var transactionList []model.PurchaseTransaction
 	var transactionObj model.PurchaseTransaction
@@ -38,14 +39,17 @@ func (pr *PurchaseTransactionRepository) Get(ctx context.Context) ([]model.Purch
 		)
 
 		if err != nil {
-			fmt.Println(err)
+			slog.Error("failed to scan transaction row", "error", err)
 			return []model.PurchaseTransaction{}, err
 		}
 
 		transactionList = append(transactionList, transactionObj)
 	}
 
-	rows.Close()
+	if err := rows.Err(); err != nil {
+		slog.Error("transaction rows iteration failed", "error", err)
+		return []model.PurchaseTransaction{}, err
+	}
 
 	return transactionList, nil
 
@@ -56,7 +60,7 @@ func (pr *PurchaseTransactionRepository) Save(ctx context.Context, transaction m
 
 	_, err := pr.connection.ExecContext(ctx, qs, transaction.Description, transaction.Amount, transaction.TransactionDate)
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("failed to insert transaction", "error", err)
 		return err
 	}
 
@@ -78,7 +82,7 @@ func (pr *PurchaseTransactionRepository) GetById(ctx context.Context, id int) (m
 	)
 
 	if err != nil {
-		fmt.Println(err)
+		slog.Error("failed to get transaction by id", "error", err, "id", id)
 		return model.PurchaseTransaction{}, err
 	}
 

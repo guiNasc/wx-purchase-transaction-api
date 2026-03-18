@@ -1,9 +1,10 @@
 package main
 
 import (
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 	"wx-purchase-api/controller"
 	"wx-purchase-api/database"
@@ -19,6 +20,8 @@ const defaultPort = "8080"
 
 func main() {
 	_ = godotenv.Load()
+	logger := buildLogger()
+	slog.SetDefault(logger)
 
 	port := os.Getenv("PORT")
 	if port == "" {
@@ -26,11 +29,12 @@ func main() {
 	}
 
 	router := gin.New()
-	router.Use(gin.Logger(), gin.Recovery())
+	router.Use(gin.Recovery(), requestLoggerMiddleware(logger))
 
 	dbConnection, err := database.ConnectDB()
 	if err != nil {
-		panic(err)
+		logger.Error("failed to connect database", "error", err)
+		os.Exit(1)
 	}
 
 	purchaseTransactionRepository := repository.NewPurchaseTransactionRepository(dbConnection)
@@ -53,9 +57,55 @@ func main() {
 		IdleTimeout:  60 * time.Second,
 	}
 
-	log.Printf("wx-purchase-api listening on :%s", port)
+	logger.Info("server starting", "port", port)
 	if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("server failed: %v", err)
+		logger.Error("server failed", "error", err)
+		os.Exit(1)
 	}
 
+}
+
+func buildLogger() *slog.Logger {
+	level := parseLogLevel(os.Getenv("LOG_LEVEL"))
+	format := strings.ToLower(os.Getenv("LOG_FORMAT"))
+
+	options := &slog.HandlerOptions{Level: level}
+	if format == "json" {
+		return slog.New(slog.NewJSONHandler(os.Stdout, options))
+	}
+
+	return slog.New(slog.NewTextHandler(os.Stdout, options))
+}
+
+func parseLogLevel(value string) slog.Level {
+	switch strings.ToLower(value) {
+	case "debug":
+		return slog.LevelDebug
+	case "warn", "warning":
+		return slog.LevelWarn
+	case "error":
+		return slog.LevelError
+	default:
+		return slog.LevelInfo
+	}
+}
+
+func requestLoggerMiddleware(logger *slog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		c.Next()
+
+		path := c.FullPath()
+		if path == "" {
+			path = c.Request.URL.Path
+		}
+
+		logger.Info("http_request",
+			"method", c.Request.Method,
+			"path", path,
+			"status", c.Writer.Status(),
+			"latency_ms", time.Since(start).Milliseconds(),
+			"client_ip", c.ClientIP(),
+		)
+	}
 }
