@@ -1,6 +1,7 @@
 package repository
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"wx-purchase-api/model"
@@ -16,10 +17,10 @@ func NewPurchaseTransactionRepository(connection *sql.DB) *PurchaseTransactionRe
 	}
 }
 
-func (pr *PurchaseTransactionRepository) Get() ([]model.PurchaseTransaction, error) {
+func (pr *PurchaseTransactionRepository) Get(ctx context.Context) ([]model.PurchaseTransaction, error) {
 
 	qs := "SELECT id, description, amount, reference_date FROM purchase_transactions ORDER BY reference_date DESC	"
-	rows, err := pr.connection.Query(qs)
+	rows, err := pr.connection.QueryContext(ctx, qs)
 	if err != nil {
 		fmt.Println(err)
 		return []model.PurchaseTransaction{}, err
@@ -50,10 +51,10 @@ func (pr *PurchaseTransactionRepository) Get() ([]model.PurchaseTransaction, err
 
 }
 
-func (pr *PurchaseTransactionRepository) Save(transaction model.PurchaseTransaction) error {
+func (pr *PurchaseTransactionRepository) Save(ctx context.Context, transaction model.PurchaseTransaction) error {
 	qs := "INSERT INTO purchase_transactions (description, amount, reference_date) VALUES ($1, $2, $3)"
 
-	_, err := pr.connection.Exec(qs, transaction.Description, transaction.Amount, transaction.TransactionDate)
+	_, err := pr.connection.ExecContext(ctx, qs, transaction.Description, transaction.Amount, transaction.TransactionDate)
 	if err != nil {
 		fmt.Println(err)
 		return err
@@ -62,10 +63,10 @@ func (pr *PurchaseTransactionRepository) Save(transaction model.PurchaseTransact
 	return nil
 }
 
-func (pr *PurchaseTransactionRepository) GetById(id int) (model.PurchaseTransaction, error) {
+func (pr *PurchaseTransactionRepository) GetById(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 
 	qs := "SELECT id, description, amount, reference_date FROM purchase_transactions WHERE id = $1"
-	row := pr.connection.QueryRow(qs, id)
+	row := pr.connection.QueryRowContext(ctx, qs, id)
 
 	var transactionObj model.PurchaseTransaction
 

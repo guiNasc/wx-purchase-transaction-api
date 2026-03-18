@@ -25,10 +25,6 @@ func main() {
 		port = defaultPort
 	}
 
-	//TODO: add graceful shutdown with context and signal handling
-	//ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
-	//defer cancel()
-
 	router := gin.New()
 	router.Use(gin.Logger(), gin.Recovery())
 
@@ -53,7 +49,7 @@ func main() {
 		Addr:         ":" + port,
 		Handler:      router,
 		ReadTimeout:  10 * time.Second,
-		WriteTimeout: 10 * time.Second,
+		WriteTimeout: 30 * time.Second,
 		IdleTimeout:  60 * time.Second,
 	}
 

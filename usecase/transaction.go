@@ -12,9 +12,9 @@ import (
 const maxDescriptionLength = 50
 
 type IPurchaseRepository interface {
-	Get() ([]model.PurchaseTransaction, error)
-	Save(transaction model.PurchaseTransaction) error
-	GetById(id int) (model.PurchaseTransaction, error)
+	Get(ctx context.Context) ([]model.PurchaseTransaction, error)
+	Save(ctx context.Context, transaction model.PurchaseTransaction) error
+	GetById(ctx context.Context, id int) (model.PurchaseTransaction, error)
 }
 
 type IRequestGateway interface {
@@ -33,16 +33,16 @@ func NewPurchaseTransactionUseCase(purchaseTransactionRepository IPurchaseReposi
 	}
 }
 
-func (ptu *PurchaseTransactionUsecase) GetTransactions() ([]model.PurchaseTransaction, error) {
-	return ptu.purchaseTransactionRepository.Get()
+func (ptu *PurchaseTransactionUsecase) GetTransactions(ctx context.Context) ([]model.PurchaseTransaction, error) {
+	return ptu.purchaseTransactionRepository.Get(ctx)
 }
 
-func (ptu *PurchaseTransactionUsecase) SaveTransaction(transaction model.PurchaseTransaction) error {
+func (ptu *PurchaseTransactionUsecase) SaveTransaction(ctx context.Context, transaction model.PurchaseTransaction) error {
 	if err := validateTransaction(transaction); err != nil {
 		return err
 	}
 
-	return ptu.purchaseTransactionRepository.Save(transaction)
+	return ptu.purchaseTransactionRepository.Save(ctx, transaction)
 }
 
 func validateTransaction(transaction model.PurchaseTransaction) error {
@@ -61,12 +61,12 @@ func validateTransaction(transaction model.PurchaseTransaction) error {
 	return nil
 }
 
-func (ptu *PurchaseTransactionUsecase) GetTransactionById(id int) (model.PurchaseTransaction, error) {
-	return ptu.purchaseTransactionRepository.GetById(id)
+func (ptu *PurchaseTransactionUsecase) GetTransactionById(ctx context.Context, id int) (model.PurchaseTransaction, error) {
+	return ptu.purchaseTransactionRepository.GetById(ctx, id)
 }
 
 func (ptu *PurchaseTransactionUsecase) GetTransactionExchange(ctx context.Context, id int, currency string) (model.PurchaseTransactionExchange, error) {
-	p, err := ptu.purchaseTransactionRepository.GetById(id)
+	p, err := ptu.purchaseTransactionRepository.GetById(ctx, id)
 	if err != nil {
 		return model.PurchaseTransactionExchange{}, err
 	}

@@ -29,8 +29,8 @@ func NewPurchaseTransactionController(purchaseTransactionUsecase usecase.Purchas
 }
 
 func (rc *purchaseTransactionController) GetTransactions(c *gin.Context) {
-
-	transactions, err := rc.purchaseTransactionUsecase.GetTransactions()
+	ctx := c.Request.Context() // Use request context for better cancellation and timeout handling
+	transactions, err := rc.purchaseTransactionUsecase.GetTransactions(ctx)
 	if err != nil {
 		writeError(c, http.StatusInternalServerError, "Failed to retrieve transactions")
 		return
@@ -40,7 +40,7 @@ func (rc *purchaseTransactionController) GetTransactions(c *gin.Context) {
 }
 
 func (rc *purchaseTransactionController) GetTransactionById(c *gin.Context) {
-
+	ctx := c.Request.Context() // Use request context for better cancellation and timeout handling
 	idParam := c.Param("id")
 	if idParam == "" {
 		writeError(c, http.StatusBadRequest, "ID parameter is required")
@@ -53,7 +53,7 @@ func (rc *purchaseTransactionController) GetTransactionById(c *gin.Context) {
 		return
 	}
 
-	transaction, err := rc.purchaseTransactionUsecase.GetTransactionById(id)
+	transaction, err := rc.purchaseTransactionUsecase.GetTransactionById(ctx, id)
 	if err != nil {
 		writeError(c, http.StatusInternalServerError, "Failed to retrieve transaction")
 
@@ -64,6 +64,7 @@ func (rc *purchaseTransactionController) GetTransactionById(c *gin.Context) {
 }
 
 func (rc *purchaseTransactionController) CreateTransaction(c *gin.Context) {
+	ctx := c.Request.Context() // Use request context for better cancellation and timeout handling
 	var request struct {
 		Description     string  `json:"description"`
 		TransactionDate string  `json:"transactionDate"`
@@ -81,7 +82,7 @@ func (rc *purchaseTransactionController) CreateTransaction(c *gin.Context) {
 		Amount:          request.Amount,
 	}
 
-	if err := rc.purchaseTransactionUsecase.SaveTransaction(transaction); err != nil {
+	if err := rc.purchaseTransactionUsecase.SaveTransaction(ctx, transaction); err != nil {
 		writeError(c, http.StatusInternalServerError, "Failed to save transaction")
 		return
 	}
@@ -90,7 +91,7 @@ func (rc *purchaseTransactionController) CreateTransaction(c *gin.Context) {
 }
 
 func (rc *purchaseTransactionController) GetTransactionExchange(c *gin.Context) {
-
+	ctx := c.Request.Context() // Use request context for better cancellation and timeout handling
 	idParam := c.Param("id")
 	if idParam == "" {
 		writeError(c, http.StatusBadRequest, "ID parameter is required")
@@ -109,7 +110,7 @@ func (rc *purchaseTransactionController) GetTransactionExchange(c *gin.Context) 
 		return
 	}
 
-	pte, err := rc.purchaseTransactionUsecase.GetTransactionExchange(c.Request.Context(), id, cParam)
+	pte, err := rc.purchaseTransactionUsecase.GetTransactionExchange(ctx, id, cParam)
 	if err != nil {
 		writeError(c, http.StatusInternalServerError, "Failed to retrieve transaction")
 

@@ -10,23 +10,23 @@ import (
 )
 
 type purchaseRepositoryMock struct {
-	getByIdFn func(id int) (model.PurchaseTransaction, error)
+	getByIdFn func(ctx context.Context, id int) (model.PurchaseTransaction, error)
 }
 
-func (m *purchaseRepositoryMock) Get() ([]model.PurchaseTransaction, error) {
+func (m *purchaseRepositoryMock) Get(ctx context.Context) ([]model.PurchaseTransaction, error) {
 	return nil, nil
 }
 
-func (m *purchaseRepositoryMock) Save(transaction model.PurchaseTransaction) error {
+func (m *purchaseRepositoryMock) Save(ctx context.Context, transaction model.PurchaseTransaction) error {
 	return nil
 }
 
-func (m *purchaseRepositoryMock) GetById(id int) (model.PurchaseTransaction, error) {
+func (m *purchaseRepositoryMock) GetById(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 	if m.getByIdFn == nil {
 		return model.PurchaseTransaction{}, nil
 	}
 
-	return m.getByIdFn(id)
+	return m.getByIdFn(ctx, id)
 }
 
 type requestGatewayMock struct {
@@ -76,7 +76,7 @@ func TestValidateTransactionDescriptionLength(t *testing.T) {
 func TestSaveTransactionReturnsValidationErrorWhenDescriptionIsTooLong(t *testing.T) {
 	uc := &PurchaseTransactionUsecase{}
 
-	err := uc.SaveTransaction(model.PurchaseTransaction{
+	err := uc.SaveTransaction(context.Background(), model.PurchaseTransaction{
 		Description: strings.Repeat("a", 51),
 	})
 
@@ -166,7 +166,7 @@ func TestGetTransactionExchangeReturnsRepositoryError(t *testing.T) {
 
 	uc := &PurchaseTransactionUsecase{
 		purchaseTransactionRepository: &purchaseRepositoryMock{
-			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{}, repoErr
 			},
 		},
@@ -186,7 +186,7 @@ func TestGetTransactionExchangeReturnsRepositoryError(t *testing.T) {
 func TestGetTransactionExchangeReturnsErrorWhenDateIsInvalid(t *testing.T) {
 	uc := &PurchaseTransactionUsecase{
 		purchaseTransactionRepository: &purchaseRepositoryMock{
-			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{
 					ID:              "1",
 					Description:     "test",
@@ -213,7 +213,7 @@ func TestGetTransactionExchangeReturnsGatewayError(t *testing.T) {
 
 	uc := &PurchaseTransactionUsecase{
 		purchaseTransactionRepository: &purchaseRepositoryMock{
-			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{
 					ID:              "1",
 					Description:     "test",
@@ -244,7 +244,7 @@ func TestGetTransactionExchangeCallsGatewayWithExpectedParams(t *testing.T) {
 
 	uc := &PurchaseTransactionUsecase{
 		purchaseTransactionRepository: &purchaseRepositoryMock{
-			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{
 					ID:              "1",
 					Description:     "test",
@@ -302,7 +302,7 @@ func TestGetTransactionExchangeNoConversionAvailable(t *testing.T) {
 
 	uc := &PurchaseTransactionUsecase{
 		purchaseTransactionRepository: &purchaseRepositoryMock{
-			getByIdFn: func(id int) (model.PurchaseTransaction, error) {
+			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{
 					ID:              "1",
 					Description:     "test",
