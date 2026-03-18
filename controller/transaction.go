@@ -82,12 +82,13 @@ func (rc *purchaseTransactionController) CreateTransaction(c *gin.Context) {
 		Amount:          request.Amount,
 	}
 
-	if err := rc.purchaseTransactionUsecase.SaveTransaction(ctx, transaction); err != nil {
+	saved, err := rc.purchaseTransactionUsecase.SaveTransaction(ctx, transaction)
+	if err != nil {
 		writeError(c, http.StatusInternalServerError, "Failed to save transaction")
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "Transaction created successfully"})
+	c.JSON(http.StatusCreated, gin.H{"message": "Transaction created successfully", "transaction": saved})
 }
 
 func (rc *purchaseTransactionController) GetTransactionExchange(c *gin.Context) {

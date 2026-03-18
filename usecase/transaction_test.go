@@ -17,8 +17,8 @@ func (m *purchaseRepositoryMock) Get(ctx context.Context) ([]model.PurchaseTrans
 	return nil, nil
 }
 
-func (m *purchaseRepositoryMock) Save(ctx context.Context, transaction model.PurchaseTransaction) error {
-	return nil
+func (m *purchaseRepositoryMock) Save(ctx context.Context, transaction model.PurchaseTransaction) (model.PurchaseTransaction, error) {
+	return transaction, nil
 }
 
 func (m *purchaseRepositoryMock) GetById(ctx context.Context, id int) (model.PurchaseTransaction, error) {
@@ -76,7 +76,7 @@ func TestValidateTransactionDescriptionLength(t *testing.T) {
 func TestSaveTransactionReturnsValidationErrorWhenDescriptionIsTooLong(t *testing.T) {
 	uc := &PurchaseTransactionUsecase{}
 
-	err := uc.SaveTransaction(context.Background(), model.PurchaseTransaction{
+	_, err := uc.SaveTransaction(context.Background(), model.PurchaseTransaction{
 		Description: strings.Repeat("a", 51),
 	})
 
@@ -188,7 +188,7 @@ func TestGetTransactionExchangeReturnsErrorWhenDateIsInvalid(t *testing.T) {
 		purchaseTransactionRepository: &purchaseRepositoryMock{
 			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{
-					ID:              "1",
+					ID:              1,
 					Description:     "test",
 					Amount:          10,
 					TransactionDate: "12/01/2019",
@@ -215,7 +215,7 @@ func TestGetTransactionExchangeReturnsGatewayError(t *testing.T) {
 		purchaseTransactionRepository: &purchaseRepositoryMock{
 			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{
-					ID:              "1",
+					ID:              1,
 					Description:     "test",
 					Amount:          10,
 					TransactionDate: "2019-07-25T00:00:00Z",
@@ -246,7 +246,7 @@ func TestGetTransactionExchangeCallsGatewayWithExpectedParams(t *testing.T) {
 		purchaseTransactionRepository: &purchaseRepositoryMock{
 			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{
-					ID:              "1",
+					ID:              1,
 					Description:     "test",
 					Amount:          10,
 					TransactionDate: "2019-07-25T00:00:00Z",
@@ -304,7 +304,7 @@ func TestGetTransactionExchangeNoConversionAvailable(t *testing.T) {
 		purchaseTransactionRepository: &purchaseRepositoryMock{
 			getByIdFn: func(ctx context.Context, id int) (model.PurchaseTransaction, error) {
 				return model.PurchaseTransaction{
-					ID:              "1",
+					ID:              1,
 					Description:     "test",
 					Amount:          10,
 					TransactionDate: "2019-07-25T00:00:00Z",

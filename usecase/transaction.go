@@ -13,7 +13,7 @@ const maxDescriptionLength = 50
 
 type IPurchaseRepository interface {
 	Get(ctx context.Context) ([]model.PurchaseTransaction, error)
-	Save(ctx context.Context, transaction model.PurchaseTransaction) error
+	Save(ctx context.Context, transaction model.PurchaseTransaction) (model.PurchaseTransaction, error)
 	GetById(ctx context.Context, id int) (model.PurchaseTransaction, error)
 }
 
@@ -37,9 +37,9 @@ func (ptu *PurchaseTransactionUsecase) GetTransactions(ctx context.Context) ([]m
 	return ptu.purchaseTransactionRepository.Get(ctx)
 }
 
-func (ptu *PurchaseTransactionUsecase) SaveTransaction(ctx context.Context, transaction model.PurchaseTransaction) error {
+func (ptu *PurchaseTransactionUsecase) SaveTransaction(ctx context.Context, transaction model.PurchaseTransaction) (model.PurchaseTransaction, error) {
 	if err := validateTransaction(transaction); err != nil {
-		return err
+		return model.PurchaseTransaction{}, err
 	}
 
 	return ptu.purchaseTransactionRepository.Save(ctx, transaction)
@@ -71,7 +71,7 @@ func (ptu *PurchaseTransactionUsecase) GetTransactionExchange(ctx context.Contex
 		return model.PurchaseTransactionExchange{}, err
 	}
 
-	toDate, err := time.Parse(time.RFC3339, p.TransactionDate)
+	toDate, err := time.Parse("2006-01-02", p.TransactionDate)
 	if err != nil {
 		return model.PurchaseTransactionExchange{}, fmt.Errorf("invalid transaction date format: %w", err)
 	}
