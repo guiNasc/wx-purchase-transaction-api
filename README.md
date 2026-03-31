@@ -44,6 +44,23 @@ Application:
 - `LOG_LEVEL` (`debug`, `info`, `warn`, `error`; default `info`)
 - `LOG_FORMAT` (`text`, `json`; default `text`)
 
+Database:
+
+- `DB_HOST` (default: `localhost`)
+- `DB_PORT` (default: `5432`)
+- `DB_USER` (default: `postgres`)
+- `DB_PASSWORD` (default: `postgres`)
+- `DB_NAME` (default: `wx_purchase_transactions`)
+- `DB_SSLMODE` (default: `disable`)
+- `DB_MAX_OPEN_CONNS` (default: `25`)
+- `DB_MAX_IDLE_CONNS` (default: `25`, capped to max open conns)
+- `DB_CONN_MAX_LIFETIME_SECONDS` (default: `300`)
+- `DB_CONN_MAX_IDLE_TIME_SECONDS` (default: `120`)
+- `DB_CONNECT_TIMEOUT_SECONDS` (default: `5`)
+- `DB_CONNECT_MAX_RETRIES` (default: `8`)
+- `DB_CONNECT_BACKOFF_INITIAL_MS` (default: `500`)
+- `DB_CONNECT_BACKOFF_MAX_MS` (default: `5000`)
+
 ## Local Setup
 
 1. Start PostgreSQL
