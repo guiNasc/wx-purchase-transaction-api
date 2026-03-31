@@ -1,9 +1,11 @@
 package controller
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 	"time"
+	"wx-purchase-api/apperror"
 	"wx-purchase-api/model"
 	"wx-purchase-api/usecase"
 
@@ -32,7 +34,7 @@ func (rc *purchaseTransactionController) GetTransactions(c *gin.Context) {
 	ctx := c.Request.Context() // Use request context for better cancellation and timeout handling
 	transactions, err := rc.purchaseTransactionUsecase.GetTransactions(ctx)
 	if err != nil {
-		writeError(c, http.StatusInternalServerError, "Failed to retrieve transactions")
+		writeError(c, err)
 		return
 	}
 
@@ -43,20 +45,24 @@ func (rc *purchaseTransactionController) GetTransactionById(c *gin.Context) {
 	ctx := c.Request.Context() // Use request context for better cancellation and timeout handling
 	idParam := c.Param("id")
 	if idParam == "" {
-		writeError(c, http.StatusBadRequest, "ID parameter is required")
+		writeError(c, apperror.BadRequest("missing_id", "id parameter is required", nil))
 		return
 	}
 
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		writeError(c, http.StatusBadRequest, "Invalid ID parameter")
+		writeError(c, apperror.BadRequest("invalid_id", "id parameter must be a valid integer", err))
+		return
+	}
+
+	if id <= 0 {
+		writeError(c, apperror.Unprocessable("invalid_id", "id parameter must be greater than zero", nil))
 		return
 	}
 
 	transaction, err := rc.purchaseTransactionUsecase.GetTransactionById(ctx, id)
 	if err != nil {
-		writeError(c, http.StatusInternalServerError, "Failed to retrieve transaction")
-
+		writeError(c, err)
 		return
 	}
 
@@ -72,7 +78,7 @@ func (rc *purchaseTransactionController) CreateTransaction(c *gin.Context) {
 	}
 
 	if err := c.ShouldBindJSON(&request); err != nil {
-		writeError(c, http.StatusBadRequest, "Invalid request body")
+		writeError(c, apperror.BadRequest("invalid_request_body", "request body is invalid", err))
 		return
 	}
 
@@ -84,7 +90,7 @@ func (rc *purchaseTransactionController) CreateTransaction(c *gin.Context) {
 
 	saved, err := rc.purchaseTransactionUsecase.SaveTransaction(ctx, transaction)
 	if err != nil {
-		writeError(c, http.StatusInternalServerError, "Failed to save transaction")
+		writeError(c, err)
 		return
 	}
 
@@ -95,32 +101,65 @@ func (rc *purchaseTransactionController) GetTransactionExchange(c *gin.Context) 
 	ctx := c.Request.Context() // Use request context for better cancellation and timeout handling
 	idParam := c.Param("id")
 	if idParam == "" {
-		writeError(c, http.StatusBadRequest, "ID parameter is required")
+		writeError(c, apperror.BadRequest("missing_id", "id parameter is required", nil))
 		return
 	}
 
 	id, err := strconv.Atoi(idParam)
 	if err != nil {
-		writeError(c, http.StatusBadRequest, "Invalid ID parameter")
+		writeError(c, apperror.BadRequest("invalid_id", "id parameter must be a valid integer", err))
+		return
+	}
+
+	if id <= 0 {
+		writeError(c, apperror.Unprocessable("invalid_id", "id parameter must be greater than zero", nil))
 		return
 	}
 
 	cParam := c.Param("currency")
 	if cParam == "" {
-		writeError(c, http.StatusBadRequest, "currency parameter is required")
+		writeError(c, apperror.BadRequest("missing_currency", "currency parameter is required", nil))
 		return
 	}
 
 	pte, err := rc.purchaseTransactionUsecase.GetTransactionExchange(ctx, id, cParam)
 	if err != nil {
-		writeError(c, http.StatusInternalServerError, "Failed to retrieve transaction")
-
+		writeError(c, err)
 		return
 	}
 
 	c.JSON(http.StatusOK, pte)
 }
 
-func writeError(c *gin.Context, status int, message string) {
-	c.JSON(status, gin.H{"error": message})
+func writeError(c *gin.Context, err error) {
+	status := http.StatusInternalServerError
+	response := model.APIErrorResponse{
+		Error: model.APIErrorBody{
+			Code:    "internal_error",
+			Message: "internal server error",
+		},
+	}
+
+	var domainErr *apperror.Error
+	if errors.As(err, &domainErr) {
+		switch domainErr.Kind {
+		case apperror.KindBadRequest:
+			status = http.StatusBadRequest
+		case apperror.KindNotFound:
+			status = http.StatusNotFound
+		case apperror.KindConflict:
+			status = http.StatusConflict
+		case apperror.KindUnprocessable:
+			status = http.StatusUnprocessableEntity
+		case apperror.KindRateLimited:
+			status = http.StatusTooManyRequests
+		case apperror.KindServiceUnavailable:
+			status = http.StatusServiceUnavailable
+		}
+
+		response.Error.Code = domainErr.Code
+		response.Error.Message = domainErr.Message
+	}
+
+	c.JSON(status, response)
 }

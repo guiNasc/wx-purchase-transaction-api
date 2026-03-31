@@ -3,8 +3,12 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"log/slog"
+	"wx-purchase-api/apperror"
 	"wx-purchase-api/model"
+
+	"github.com/lib/pq"
 )
 
 type PurchaseTransactionRepository struct {
@@ -62,6 +66,11 @@ func (pr *PurchaseTransactionRepository) Save(ctx context.Context, transaction m
 		transaction.Amount, transaction.TransactionDate,
 	).Scan(&transaction.ID)
 	if err != nil {
+		var pqErr *pq.Error
+		if errors.As(err, &pqErr) && pqErr.Code == "23505" {
+			return model.PurchaseTransaction{}, apperror.Conflict("transaction_conflict", "transaction conflicts with an existing record", err)
+		}
+
 		slog.Error("failed to insert transaction", "error", err)
 		return model.PurchaseTransaction{}, err
 	}
@@ -84,6 +93,10 @@ func (pr *PurchaseTransactionRepository) GetById(ctx context.Context, id int) (m
 	)
 
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return model.PurchaseTransaction{}, apperror.NotFound("transaction_not_found", "transaction not found", err)
+		}
+
 		slog.Error("failed to get transaction by id", "error", err, "id", id)
 		return model.PurchaseTransaction{}, err
 	}

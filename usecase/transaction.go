@@ -2,8 +2,9 @@ package usecase
 
 import (
 	"context"
-	"fmt"
+	"strings"
 	"time"
+	"wx-purchase-api/apperror"
 	"wx-purchase-api/model"
 
 	"github.com/shopspring/decimal"
@@ -47,25 +48,37 @@ func (ptu *PurchaseTransactionUsecase) SaveTransaction(ctx context.Context, tran
 
 func validateTransaction(transaction model.PurchaseTransaction) error {
 	if len(transaction.Description) > maxDescriptionLength {
-		return fmt.Errorf("description must not be longer than %d characters", maxDescriptionLength)
+		return apperror.Unprocessable("description_too_long", "description must not be longer than 50 characters", nil)
 	}
 
 	if transaction.Amount <= 0 {
-		return fmt.Errorf("amount must be positive")
+		return apperror.Unprocessable("invalid_amount", "amount must be positive", nil)
 	}
 
 	if _, err := time.Parse("2006-01-02", transaction.TransactionDate); err != nil {
-		return fmt.Errorf("transactionDate must be in YYYY-MM-DD format")
+		return apperror.Unprocessable("invalid_transaction_date", "transactionDate must be in YYYY-MM-DD format", err)
 	}
 
 	return nil
 }
 
 func (ptu *PurchaseTransactionUsecase) GetTransactionById(ctx context.Context, id int) (model.PurchaseTransaction, error) {
+	if id <= 0 {
+		return model.PurchaseTransaction{}, apperror.Unprocessable("invalid_id", "id must be greater than zero", nil)
+	}
+
 	return ptu.purchaseTransactionRepository.GetById(ctx, id)
 }
 
 func (ptu *PurchaseTransactionUsecase) GetTransactionExchange(ctx context.Context, id int, currency string) (model.PurchaseTransactionExchange, error) {
+	if id <= 0 {
+		return model.PurchaseTransactionExchange{}, apperror.Unprocessable("invalid_id", "id must be greater than zero", nil)
+	}
+
+	if strings.TrimSpace(currency) == "" {
+		return model.PurchaseTransactionExchange{}, apperror.BadRequest("missing_currency", "currency is required", nil)
+	}
+
 	p, err := ptu.purchaseTransactionRepository.GetById(ctx, id)
 	if err != nil {
 		return model.PurchaseTransactionExchange{}, err
@@ -73,7 +86,7 @@ func (ptu *PurchaseTransactionUsecase) GetTransactionExchange(ctx context.Contex
 
 	toDate, err := time.Parse("2006-01-02", p.TransactionDate)
 	if err != nil {
-		return model.PurchaseTransactionExchange{}, fmt.Errorf("invalid transaction date format: %w", err)
+		return model.PurchaseTransactionExchange{}, apperror.Unprocessable("invalid_transaction_date", "transaction has invalid date format", err)
 	}
 
 	fromDate := toDate.AddDate(0, -6, 0).Format("2006-01-02")
@@ -85,14 +98,14 @@ func (ptu *PurchaseTransactionUsecase) GetTransactionExchange(ctx context.Contex
 	}
 
 	if apiResponse.Meta.Count == 0 {
-		return model.PurchaseTransactionExchange{}, fmt.Errorf("no exchange rate data found for currency %s in the last 6 months", currency)
+		return model.PurchaseTransactionExchange{}, apperror.Unprocessable("exchange_rate_not_found", "no exchange rate data found for the requested period", nil)
 	}
 
 	apiObj := apiResponse.Data[0]
 
 	eRate, err := decimal.NewFromString(apiObj.ExchangeRate)
 	if err != nil {
-		return model.PurchaseTransactionExchange{}, fmt.Errorf("invalid exchange rate format: %w", err)
+		return model.PurchaseTransactionExchange{}, apperror.ServiceUnavailable("invalid_exchange_rate_response", "exchange service returned invalid data", err)
 	}
 
 	decimalAmount := decimal.NewFromFloat(p.Amount)

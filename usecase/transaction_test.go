@@ -203,7 +203,7 @@ func TestGetTransactionExchangeReturnsErrorWhenDateIsInvalid(t *testing.T) {
 		t.Fatal("expected error, got nil")
 	}
 
-	if !strings.Contains(err.Error(), "invalid transaction date format") {
+	if !strings.Contains(err.Error(), "invalid date format") {
 		t.Fatalf("expected invalid date error, got %q", err.Error())
 	}
 }
@@ -218,7 +218,7 @@ func TestGetTransactionExchangeReturnsGatewayError(t *testing.T) {
 					ID:              1,
 					Description:     "test",
 					Amount:          10,
-					TransactionDate: "2019-07-25T00:00:00Z",
+					TransactionDate: "2019-07-25",
 				}, nil
 			},
 		},
@@ -249,7 +249,7 @@ func TestGetTransactionExchangeCallsGatewayWithExpectedParams(t *testing.T) {
 					ID:              1,
 					Description:     "test",
 					Amount:          10,
-					TransactionDate: "2019-07-25T00:00:00Z",
+					TransactionDate: "2019-07-25",
 				}, nil
 			},
 		},
@@ -298,7 +298,7 @@ func TestGetTransactionExchangeCallsGatewayWithExpectedParams(t *testing.T) {
 
 func TestGetTransactionExchangeNoConversionAvailable(t *testing.T) {
 	called := false
-	wantErr := errors.New("no exchange rate data found for currency Brazil-Real in the last 6 months")
+	wantErr := errors.New("no exchange rate data found for the requested period")
 
 	uc := &PurchaseTransactionUsecase{
 		purchaseTransactionRepository: &purchaseRepositoryMock{
@@ -307,7 +307,7 @@ func TestGetTransactionExchangeNoConversionAvailable(t *testing.T) {
 					ID:              1,
 					Description:     "test",
 					Amount:          10,
-					TransactionDate: "2019-07-25T00:00:00Z",
+					TransactionDate: "2019-07-25",
 				}, nil
 			},
 		},
@@ -331,8 +331,8 @@ func TestGetTransactionExchangeNoConversionAvailable(t *testing.T) {
 		t.Fatalf("expected error, got nil")
 	}
 
-	if !strings.Contains(wantErr.Error(), err.Error()) {
-		t.Fatalf("expected error to contain %q, got %q", err.Error(), err.Error())
+	if !strings.Contains(err.Error(), wantErr.Error()) {
+		t.Fatalf("expected error to contain %q, got %q", wantErr.Error(), err.Error())
 	}
 
 	if !called {
