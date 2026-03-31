@@ -118,7 +118,7 @@ func (ptu *PurchaseTransactionUsecase) GetTransactionExchange(ctx context.Contex
 		Amount:          p.Amount,
 		ID:              p.ID,
 		Currency:        apiObj.Currency,
-		ExchangeRate:    eRate.InexactFloat64(),
-		ConvertedAmount: convertedAmount.InexactFloat64(),
+		ExchangeRate:    eRate,
+		ConvertedAmount: convertedAmount,
 	}, nil
 }

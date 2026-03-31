@@ -1,5 +1,7 @@
 package model
 
+import "github.com/shopspring/decimal"
+
 type PurchaseTransaction struct {
 	Description     string  `json:"description"`
 	TransactionDate string  `json:"transactionDate"`
@@ -8,13 +10,13 @@ type PurchaseTransaction struct {
 }
 
 type PurchaseTransactionExchange struct {
-	Description     string  `json:"description"`
-	TransactionDate string  `json:"transactionDate"`
-	Amount          float64 `json:"amount"`
-	ID              int64   `json:"id"`
-	Currency        string  `json:"currency"`
-	ExchangeRate    float64 `json:"exchangeRate"`
-	ConvertedAmount float64 `json:"convertedAmount"`
+	Description     string          `json:"description"`
+	TransactionDate string          `json:"transactionDate"`
+	Amount          float64         `json:"amount"`
+	ID              int64           `json:"id"`
+	Currency        string          `json:"currency"`
+	ExchangeRate    decimal.Decimal `json:"exchangeRate"`
+	ConvertedAmount decimal.Decimal `json:"convertedAmount"`
 }
 
 type ExchangeAPIObj struct {
