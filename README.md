@@ -97,6 +97,34 @@ To remove the database volume too:
 docker compose down -v
 ```
 
+## Local Development With Live Reload
+
+Use the base compose file plus the development override file:
+
+```bash
+cp .env.example .env
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
+```
+
+What changes in development mode:
+
+- The `api` service uses the `development` target from `Dockerfile`.
+- The repository is bind-mounted into the container.
+- `air` watches Go files and rebuilds/restarts the API automatically.
+- Go module and build caches are stored in Docker volumes for faster reloads.
+
+You can edit the source locally and keep calling the same endpoint:
+
+```bash
+curl http://localhost:8080/health
+```
+
+To stop the development stack:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml down
+```
+
 ## Local Setup Without Docker For The API
 
 1. Start PostgreSQL
