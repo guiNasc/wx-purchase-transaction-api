@@ -34,7 +34,7 @@ Dependency injection is generated with Google Wire from `cmd/wire.go` into `cmd/
 ## Requirements
 
 - Go installed
-- Docker and Docker Compose (for local PostgreSQL)
+- Docker and Docker Compose
 
 ## Environment Variables
 
@@ -61,12 +61,48 @@ Database:
 - `DB_CONNECT_BACKOFF_INITIAL_MS` (default: `500`)
 - `DB_CONNECT_BACKOFF_MAX_MS` (default: `5000`)
 
-## Local Setup
+## Run With Docker
+
+This repository includes a multi-stage `Dockerfile` and a `docker-compose.yml` that run both PostgreSQL and the API in containers.
+
+1. Create your environment file
+
+```bash
+cp .env.example .env
+```
+
+2. Start the full stack
+
+```bash
+docker compose up --build -d
+```
+
+3. Call the API
+
+```bash
+curl http://localhost:8080/health
+```
+
+Only the API port is published to the host. PostgreSQL stays on the internal Docker network and is reachable by the API as `postgres:5432`.
+
+To stop everything:
+
+```bash
+docker compose down
+```
+
+To remove the database volume too:
+
+```bash
+docker compose down -v
+```
+
+## Local Setup Without Docker For The API
 
 1. Start PostgreSQL
 
 ```bash
-docker compose up -d
+docker compose up -d postgres
 ```
 
 2. Run the API
@@ -80,6 +116,8 @@ go run ./cmd
 ```bash
 PORT=3000 go run ./cmd
 ```
+
+When running the API outside Docker, keep `DB_HOST=localhost`. When running the full stack in Docker Compose, the API service automatically uses `DB_HOST=postgres`.
 
 ## Dependency Injection (Wire)
 

@@ -7,8 +7,6 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASSWORD}
       POSTGRES_DB: ${DB_NAME}
-    ports:
-      - "5432:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/001-init.sql:ro
@@ -17,6 +15,36 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: wx-purchase-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: ${PORT:-8080}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
+      DB_SSLMODE: ${DB_SSLMODE:-disable}
+      DB_MAX_OPEN_CONNS: ${DB_MAX_OPEN_CONNS:-25}
+      DB_MAX_IDLE_CONNS: ${DB_MAX_IDLE_CONNS:-25}
+      DB_CONN_MAX_LIFETIME_SECONDS: ${DB_CONN_MAX_LIFETIME_SECONDS:-300}
+      DB_CONN_MAX_IDLE_TIME_SECONDS: ${DB_CONN_MAX_IDLE_TIME_SECONDS:-120}
+      DB_CONNECT_TIMEOUT_SECONDS: ${DB_CONNECT_TIMEOUT_SECONDS:-5}
+      DB_CONNECT_MAX_RETRIES: ${DB_CONNECT_MAX_RETRIES:-8}
+      DB_CONNECT_BACKOFF_INITIAL_MS: ${DB_CONNECT_BACKOFF_INITIAL_MS:-500}
+      DB_CONNECT_BACKOFF_MAX_MS: ${DB_CONNECT_BACKOFF_MAX_MS:-5000}
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
 
 volumes:
   postgres_data:
